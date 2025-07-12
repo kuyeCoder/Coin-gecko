@@ -12,7 +12,7 @@ const CryptoContextProvider = (props) => {
   // * Object describe which fiat currency you're priciing coins in, changing triggers a data refectch
   const [currentCurrency, setCurrentCurrency] = useState({
     name: "usd",
-    Symbol: "$",
+    symbol: "$",
   });
 
   const fetchCryptoData = async () => {

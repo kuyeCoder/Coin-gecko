@@ -1,11 +1,13 @@
+// --- Copilot: Keyboard navigation for search dropdown ---
 import { Coins } from "lucide-react";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { CryptoContext } from "../context/cryptoContext";
 import { Search } from "lucide-react";
 
 const Navbar = () => {
   const [input, setInput] = useState("");
   const [filteredCoins, setFilteredCoins] = useState([]);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1); // Copilot: Track highlighted suggestion
   const { cryptolist = [], setSearchTerm } = useContext(CryptoContext);
 
   const searchHandler = (event) => {
@@ -16,29 +18,64 @@ const Navbar = () => {
     setSearchTerm(input);
   };
 
+  // Copilot: Handle input changes and reset highlight
   const inputHandler = (event) => {
-    // This function is called every time the user types into the search input field
     const value = event.target.value;
-
-    // updates the input state, which in turn updates the displayed value in the input field.
     setInput(value);
-
-    // ? If the input field is empty, it clears the global search term "setSearchTerm("")" and hides any previous search suggestions
+    setHighlightedIndex(-1); // Copilot: Reset highlight on input change
     if (value === "") {
       setSearchTerm("");
       setFilteredCoins([]);
     } else {
-      // It filters the cryptolist (all cryptocurrencies) to find coins whoses names include the types value (case-insentively).
-
       const suggestions = cryptolist.filter((coin) =>
         coin.name.toLowerCase().includes(value.toLowerCase())
       );
-      // console.log(suggestions);
-
-      // It takes only the first 5 matching suggestions to keep the dropdown concise.
-
-      // Updates the filteredCoins state, which will then render the suggestion list.
       setFilteredCoins(suggestions.slice(0, 5));
+    }
+  };
+
+  // === Copilot: ENHANCED Keyboard navigation for search dropdown ===
+  // This effect ensures highlightedIndex is always valid when filteredCoins changes
+  useEffect(() => {
+    if (highlightedIndex >= filteredCoins.length) {
+      setHighlightedIndex(filteredCoins.length - 1);
+    }
+    if (filteredCoins.length === 0) {
+      setHighlightedIndex(-1);
+    }
+  }, [filteredCoins]);
+
+  // This handler now also scrolls the highlighted item into view for visibility
+  const handleKeyDown = (event) => {
+    if (filteredCoins.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlightedIndex((prev) => {
+        const next = prev < filteredCoins.length - 1 ? prev + 1 : 0;
+        // Copilot: Scroll highlighted item into view
+        setTimeout(() => {
+          const el = document.getElementById(`search-suggestion-${next}`);
+          if (el) el.scrollIntoView({ block: "nearest" });
+        }, 0);
+        return next;
+      });
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlightedIndex((prev) => {
+        const next = prev > 0 ? prev - 1 : filteredCoins.length - 1;
+        // Copilot: Scroll highlighted item into view
+        setTimeout(() => {
+          const el = document.getElementById(`search-suggestion-${next}`);
+          if (el) el.scrollIntoView({ block: "nearest" });
+        }, 0);
+        return next;
+      });
+    } else if (event.key === "Enter") {
+      if (highlightedIndex >= 0) {
+        setInput(filteredCoins[highlightedIndex].name);
+        setFilteredCoins([]);
+        setHighlightedIndex(-1);
+      }
     }
   };
 
@@ -62,11 +99,14 @@ const Navbar = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/400 to-cyan-500/40 rounded-full opacity-30 group-hover:opacity-50 transistion duration-300 pointer-events-none"></div>
 
           {/* input + button */}
+
+          {/* Copilot: Added onKeyDown for keyboard navigation */}
           <input
             type="text"
             placeholder="Search Crypto...."
             value={input}
             onChange={inputHandler}
+            onKeyDown={handleKeyDown} // Copilot: Keyboard navigation
             required
             className="relative w-full pr-12 pl-6 py-3 bg-gray-800/60 border border-gray-600/30 rounded-full foucus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder-gray-400 text-gray-200 backdrop-blur-sm z-10"
           />
@@ -76,18 +116,29 @@ const Navbar = () => {
           </button>
         </div>
         {filteredCoins.length > 0 && (
-          <ul className="absolute w-full bg-gray-800/95 border border-gray-700 mt-2 rounded-lg shadow-xl z-10 backdrop-blur-md">
+          <ul className="absolute w-full bg-gray-800/95 border border-gray-700 mt-2 rounded-lg shadow-xl z-10 backdrop-blur-md max-h-60 overflow-y-auto">
             {filteredCoins.map((coin, idx) => (
               <li
                 key={idx}
-                className="px-4 py-3 hover:bg-emerald-600/30 cursor-pointer text-gray-100"
+                id={`search-suggestion-${idx}`}
+                // === Copilot: ENHANCED highlight for keyboard navigation ===
+                className={`px-4 py-3 hover:bg-emerald-400/30 hover:text-black cursor-pointer text-gray-100 transition-all duration-150 ${
+                  idx === highlightedIndex
+                    ? "bg-emerald-400/30 text-black font-bold border-l-4 border-emerald-600"
+                    : ""
+                }`}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+                onMouseLeave={() => setHighlightedIndex(-1)}
                 onClick={() => {
                   setInput(coin.name);
-                  // anytime you clicked the set form should be cleared.
-
                   setFilteredCoins([]);
+                  setHighlightedIndex(-1);
                 }}
               >
+                {/* === Copilot: Standout arrow for highlighted item === */}
+                {idx === highlightedIndex && (
+                  <span className="mr-2 animate-bounce">→</span>
+                )}
                 {coin.name}
               </li>
             ))}
